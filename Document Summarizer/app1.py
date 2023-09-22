@@ -4,7 +4,6 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 from summarizer import Summarizer
 from PyPDF2 import PdfReader
 import re
-import pandas as pd
 import spacy
 import time
 
@@ -73,11 +72,6 @@ def index():
 
             summarizer = pipeline("summarization", model="google/pegasus-xsum")
             
-            new_data = {'Keyword': keyword, 'Extracted Content': relevant_content, 'Hugging Face Summary': summary_hf, 'Summarization Library Summary': summarizer_summary}
-            df = df.append(new_data, ignore_index=True)
-
-            # Save the DataFrame to an Excel file
-            df.to_excel('summaries.xlsx', index=False)
 
             return render_template("index.html", keyword=keyword, extracted_content=relevant_content, hf_summary=summary_hf,
                                 summarizer_summary=summarizer_summary, spacy_summary=summarizer, extraction_time=extraction_time,
@@ -107,8 +101,8 @@ def extract_content_around_keyword(document, keyword, max_words=300):
     extracted_content = re.sub(r"[^a-zA-Z0-9\s]", "", extracted_content)
 
     extracted_content = re.sub(r"\d+", "", extracted_content)
-    extracted_content = extracted_content.replace("Section", "")
-
+    extracted_content = extracted_content.replace("section", "")
+    
     return extracted_content
 
 if __name__ == "__main__":
