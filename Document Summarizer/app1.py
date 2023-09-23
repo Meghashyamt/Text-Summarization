@@ -4,8 +4,10 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 from summarizer import Summarizer
 from PyPDF2 import PdfReader
 import re
+import pandas as pd
 import spacy
 import time
+import openpyxl
 
 # Load spaCy language model
 nlp = spacy.load("en_core_web_sm")
@@ -15,10 +17,14 @@ model_name = "t5-small"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
+
 app = Flask(__name__)
+
+df = pd.DataFrame(columns=['Keyword', 'Extracted Content', 'Hugging Face Summary', 'Summarization Library Summary'])
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global df
     if request.method == "POST":
         uploaded_file = request.files["file"]
         keyword = request.form["keyword"]
@@ -71,10 +77,24 @@ def index():
             summarizer_time = summarizer_end_time - summarizer_start_time
 
             summarizer = pipeline("summarization", model="google/pegasus-xsum")
+            summary = summarizer(relevant_content, max_length=500, min_length=30, do_sample=False)
+
             
+            new_data = {'Keyword': keyword, 'Extracted Content': relevant_content, 'Hugging Face Summary': summary_hf, 'Summarization Library Summary': summary}
+            df = df.append(new_data, ignore_index=True)
+
+            # Save the DataFrame to an Excel file
+            df.to_excel(r'C:\Users\M_Thiruveedula\Downloads\Solution_python\Solution_python\python_solution\summaries.xlsx', index=False)
+            # Save the DataFrame to an Excel file without overwriting
+            # Save the DataFrame to an Excel file without overwriting
+            # with pd.ExcelWriter('summaries.xlsx', engine='openpyxl', mode='a') as writer:
+            #     writer.book = openpyxl.load_workbook('summaries.xlsx')
+            #     writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
+            #     df.to_excel(writer, index=False, sheet_name='Sheet1', startrow=writer.sheets['Sheet1'].max_row)
+
 
             return render_template("index.html", keyword=keyword, extracted_content=relevant_content, hf_summary=summary_hf,
-                                summarizer_summary=summarizer_summary, spacy_summary=summarizer, extraction_time=extraction_time,
+                                summarizer_summary=summary, spacy_summary=summarizer, extraction_time=extraction_time,
                                 word_count=word_count, summarization_time=summarization_time, summarizer_time=summarizer_time)
 
 
@@ -101,8 +121,8 @@ def extract_content_around_keyword(document, keyword, max_words=300):
     extracted_content = re.sub(r"[^a-zA-Z0-9\s]", "", extracted_content)
 
     extracted_content = re.sub(r"\d+", "", extracted_content)
-    extracted_content = extracted_content.replace("section", "")
-    
+    extracted_content = extracted_content.replace("Section", "")
+
     return extracted_content
 
 if __name__ == "__main__":
