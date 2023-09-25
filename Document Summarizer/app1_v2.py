@@ -80,62 +80,12 @@ def index():
 
             summarizer = pipeline("summarization", model="google/pegasus-xsum")
             #summary = summarizer(relevant_content, min_length=30, do_sample=False)
-
-            import spacy
-            from spacy.lang.en.stop_words import STOP_WORDS
-            from string import punctuation
-            stopwords = list(STOP_WORDS)
-            nlp = spacy.load('en_core_web_sm')
-            doc = nlp(relevant_content)
-
-
-            tokens = [token.text for token in doc]
-            print(tokens)
-            punctuation = punctuation + '\n'
-            punctuation
-            word_frequencies = {}
-            for word in doc:
-                if word.text.lower() not in stopwords:
-                    if word.text.lower() not in punctuation:
-                        if word.text not in word_frequencies.keys():
-                            word_frequencies[word.text] = 1
-                        else:
-                            word_frequencies[word.text] += 1
-            #print(word_frequencies)
-
-            max_frequency = max(word_frequencies.values())
-            max_frequency
-            for word in word_frequencies.keys():
-                word_frequencies[word] = word_frequencies[word]/max_frequency
-            print(word_frequencies)
-            sentence_tokens = [sent for sent in doc.sents]
-            #print(sentence_tokens)
-
-            sentence_scores = {}
-            for sent in sentence_tokens:
-                for word in sent:
-                    if word.text.lower() in word_frequencies.keys():
-                        if sent not in sentence_scores.keys():
-                            sentence_scores[sent] = word_frequencies[word.text.lower()]
-                        else:
-                            sentence_scores[sent] += word_frequencies[word.text.lower()]
-            #print(sentence_scores)
-
-            from heapq import nlargest
-            select_length = int(len(sentence_tokens)*0.3)
-            #select_length
-            summary2 = nlargest(select_length, sentence_scores, key = sentence_scores.get)
-            #summary
-            final_summary = [word.text for word in summary2]
-            summary3 = ' '.join(final_summary)
-            print(summary3,"Final summary")
-
             import torch
             #from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
             model1 = AutoModelForSeq2SeqLM.from_pretrained('t5-base')
             tokenizer1 = AutoTokenizer.from_pretrained('t5-base')
 
-            tokens_input = tokenizer1.encode("summarize: " + summary3,
+            tokens_input = tokenizer1.encode("summarize: " + relevant_content,
                                         return_tensors='pt',
                                         max_length=tokenizer1.model_max_length,
                                         truncation=True)
@@ -153,7 +103,9 @@ def index():
             #df.to_excel(r'C:\Users\M_Thiruveedula\Downloads\Solution_python\Solution_python\python_solution\summaries.xlsx', index=False)
             excel_file_path = r'C:\Users\M_Thiruveedula\Downloads\Solution_python\Solution_python\python_solution\summaries.xlsx'
 
-                        
+            # Check if the Excel file exists, create it if not
+            # ...
+
             # Check if the Excel file exists
             if not os.path.isfile(excel_file_path):
                 # If the file doesn't exist, create it with the DataFrame
@@ -161,26 +113,27 @@ def index():
             else:
                 # Load the existing Excel file
                 book = load_workbook(excel_file_path)
+                
+                # Create a Pandas Excel writer object with the loaded workbook
+                writer = pd.ExcelWriter(excel_file_path, engine='openpyxl') 
+                writer.book = book
 
-                # Check if 'Sheet1' exists
-                if 'Sheet1' in book.sheetnames:
-                    writer = pd.ExcelWriter(excel_file_path, engine='openpyxl') 
-                    writer.book = book
+                # Check if 'Sheet1' exists, create it if not (this should be done only once)
+                if 'Sheet1' not in writer.book.sheetnames:
+                    writer.book.create_sheet(title='Sheet1')
 
-                    # Get the last row number in 'Sheet1'
-                    sheet = writer.book['Sheet1']
-                    last_row = sheet.max_row if sheet.max_row is not None else 0
+                # Get the last row number in 'Sheet1'
+                sheet = writer.book['Sheet1']
+                last_row = sheet.max_row if sheet.max_row is not None else 0
 
-                    # Append the DataFrame to the Excel file without overwriting
-                    df.to_excel(writer, index=False, sheet_name='Sheet1', startrow=last_row + 1)
+                # Append the DataFrame to the Excel file without overwriting
+                df.to_excel(writer, index=False, sheet_name='Sheet1', startrow=last_row + 1)
 
-                    # Save the Excel file
-                    writer.save()
-                    writer.close()
-                else:
-                    # If 'Sheet1' doesn't exist, create it and save the DataFrame
-                    with pd.ExcelWriter(excel_file_path, engine='openpyxl', mode='a') as writer:
-                        df.to_excel(writer, index=False, sheet_name='Sheet1')
+                # Save the Excel file
+                writer.save()
+                writer.close()
+
+            # ...
 
 
 
